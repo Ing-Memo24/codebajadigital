@@ -672,35 +672,27 @@ document.getElementById('contactForm').addEventListener('submit', async function
   btn.textContent = 'Enviando...';
   btn.disabled = true;
 
-  const nombre   = document.getElementById('fNombre').value.trim();
-  const tel      = document.getElementById('fTel').value.trim();
-  const email    = document.getElementById('fEmail').value.trim();
-  const servicio = document.getElementById('fServicio').value;
-  const notas    = document.getElementById('fNotas').value.trim();
-
   const nuevo = {
     id: Date.now(),
-    nombre, tel, email,
-    contacto: nombre,
-    servicio: servicio || 'Cotización pendiente',
-    estado: 'Nuevo',
-    valor: '',
-    fuente: 'Sitio web',
-    notas,
-    fecha: new Date().toLocaleDateString('es-MX')
+    nombre:   document.getElementById('fNombre').value.trim(),
+    tel:      document.getElementById('fTel').value.trim(),
+    email:    document.getElementById('fEmail').value.trim(),
+    servicio: document.getElementById('fServicio').value || 'Cotización pendiente',
+    notas:    document.getElementById('fNotas').value.trim(),
+    fuente:   'Sitio web',
+    estado:   'Nuevo',
+    fecha:    new Date().toLocaleDateString('es-MX')
   };
 
-  // Guardar en storage compartido con el CRM
   try {
-    let clientes = [];
-    try {
-      const r = await window.storage.get('codebaja-clients', true);
-      if (r) clientes = JSON.parse(r.value);
-    } catch(_) {}
-    clientes.push(nuevo);
-    await window.storage.set('codebaja-clients', JSON.stringify(clientes), true);
+    await fetch('https://script.google.com/macros/s/AKfycbwfgqGi8unO-yzXBrN33gdpaSnl8jm_4hvNJ6lD_flL-mldBfqE0uwxdn2Ydo8XN7Rv/exec', {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(nuevo)
+    });
   } catch(err) {
-    console.warn('Storage no disponible:', err);
+    console.warn('Error al enviar al CRM:', err);
   }
 
   const msg = document.getElementById('successMsg');
