@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CodeBaja CRM · Panel de Clientes</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --neon: #00ff88; --neon-dim: rgba(0,255,136,.1); --neon-glow: rgba(0,255,136,.3);
+  --cyan: #00d4ff; --orange: #ff8c00; --red: #ff4466; --yellow: #ffd700;
+  --dark: #050a07; --dark2: #0a100c; --dark3: #0f1a12; --card: #0c1510;
+  --border: rgba(0,255,136,.15); --text: #c8e0cc; --muted: #5a7a62; --white: #f0fff5;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:'Syne',sans-serif;background:var(--dark);color:var(--text);overflow-x:hidden;}
+
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;background:var(--dark);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2rem;}
+#loginScreen::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.3;}
+.login-box{background:var(--card);border:1px solid var(--border);padding:3rem;width:100%;max-width:400px;position:relative;z-index:1;box-shadow:0 0 80px rgba(0,255,136,.06);}
+.login-logo{font-family:'Space Mono',monospace;font-size:1rem;color:var(--neon);margin-bottom:.3rem;display:flex;align-items:center;gap:.5rem;}
+.login-logo::before{content:'>';animation:blink 1s step-end infinite;}
+@keyframes blink{50%{opacity:0;}}
+.login-sub{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);margin-bottom:2rem;letter-spacing:.12em;text-transform:uppercase;}
+.login-label{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--neon);opacity:.7;margin-bottom:.5rem;display:block;}
+.login-input{width:100%;background:var(--dark3);border:1px solid var(--border);padding:.85rem 1rem;font-family:'Space Mono',monospace;font-size:.85rem;color:var(--text);outline:none;margin-bottom:1.2rem;transition:border-color .3s;}
+.login-input:focus{border-color:var(--neon);}
+.login-btn{width:100%;background:var(--neon);color:var(--dark);padding:.9rem;font-family:'Space Mono',monospace;font-size:.8rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border:none;cursor:pointer;transition:all .3s;}
+.login-btn:hover{background:var(--white);box-shadow:0 0 30px var(--neon-glow);}
+.login-error{font-family:'Space Mono',monospace;font-size:.72rem;color:var(--red);margin-top:.8rem;display:none;text-align:center;}
+
+/* LAYOUT */
+#app{display:none;height:100vh;display:none;flex-direction:column;}
+#app.visible{display:flex;}
+
+/* TOP BAR */
+.topbar{height:60px;background:var(--dark2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 2rem;flex-shrink:0;}
+.topbar-logo{font-family:'Space Mono',monospace;font-size:.9rem;color:var(--neon);display:flex;align-items:center;gap:.5rem;}
+.topbar-logo::before{content:'>';animation:blink 1s step-end infinite;}
+.topbar-right{display:flex;align-items:center;gap:1.5rem;}
+.topbar-date{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);}
+.topbar-user{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--neon);opacity:.7;}
+.logout-btn{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);background:none;border:1px solid var(--border);padding:.3rem .8rem;cursor:pointer;transition:all .2s;letter-spacing:.1em;text-transform:uppercase;}
+.logout-btn:hover{border-color:var(--red);color:var(--red);}
+
+/* MAIN AREA */
+.main{display:flex;flex:1;overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{width:220px;background:var(--dark2);border-right:1px solid var(--border);padding:1.5rem 0;flex-shrink:0;display:flex;flex-direction:column;}
+.nav-item{display:flex;align-items:center;gap:.8rem;padding:.75rem 1.5rem;cursor:pointer;transition:all .2s;border-left:2px solid transparent;font-size:.8rem;font-weight:600;color:var(--muted);}
+.nav-item:hover{background:var(--neon-dim);color:var(--text);}
+.nav-item.active{border-left-color:var(--neon);background:var(--neon-dim);color:var(--neon);}
+.nav-item svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;flex-shrink:0;}
+.nav-section{font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);padding:.5rem 1.5rem 0;margin-top:1rem;opacity:.5;}
+.sidebar-bottom{margin-top:auto;padding:1rem 1.5rem;border-top:1px solid var(--border);}
+.sidebar-version{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);opacity:.4;}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:2rem;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* STATS CARDS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;}
+.stat-card{background:var(--card);border:1px solid var(--border);padding:1.2rem 1.5rem;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--neon);}
+.stat-card.orange::before{background:var(--orange);}
+.stat-card.cyan::before{background:var(--cyan);}
+.stat-card.red::before{background:var(--red);}
+.stat-label-s{font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;}
+.stat-val{font-size:2rem;font-weight:800;color:var(--white);line-height:1;}
+.stat-sub{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);margin-top:.4rem;}
+
+/* PAGE HEADER */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;}
+.page-title{font-size:1.4rem;font-weight:800;color:var(--white);letter-spacing:-.02em;}
+.page-title span{color:var(--neon);}
+
+/* TOOLBAR */
+.toolbar{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;}
+.search-box{background:var(--dark3);border:1px solid var(--border);padding:.6rem 1rem;font-family:'Space Mono',monospace;font-size:.75rem;color:var(--text);outline:none;width:240px;transition:border-color .3s;}
+.search-box:focus{border-color:var(--neon);}
+.search-box::placeholder{color:var(--muted);}
+.filter-select{background:var(--dark3);border:1px solid var(--border);padding:.6rem .9rem;font-family:'Space Mono',monospace;font-size:.72rem;color:var(--text);outline:none;cursor:pointer;}
+.filter-select option{background:var(--dark3);}
+.btn-sm{padding:.55rem 1.1rem;font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;border:none;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.4rem;}
+.btn-sm svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;}
+.btn-primary-sm{background:var(--neon);color:var(--dark);font-weight:700;}
+.btn-primary-sm:hover{background:var(--white);box-shadow:0 0 20px var(--neon-glow);}
+.btn-outline-sm{background:transparent;color:var(--text);border:1px solid var(--border);}
+.btn-outline-sm:hover{border-color:var(--neon);color:var(--neon);}
+.btn-danger-sm{background:transparent;color:var(--red);border:1px solid rgba(255,68,102,.3);}
+.btn-danger-sm:hover{background:rgba(255,68,102,.1);}
+
+/* TABLE */
+.table-wrap{background:var(--card);border:1px solid var(--border);overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:.82rem;}
+thead tr{border-bottom:1px solid var(--border);}
+th{font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--neon);padding:.9rem 1rem;text-align:left;white-space:nowrap;opacity:.7;}
+td{padding:.85rem 1rem;border-bottom:1px solid rgba(0,255,136,.05);color:var(--text);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--neon-dim);}
+.badge{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .65rem;border-radius:2px;font-family:'Space Mono',monospace;font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+.badge-new{background:rgba(0,255,136,.12);color:var(--neon);border:1px solid rgba(0,255,136,.2);}
+.badge-active{background:rgba(0,212,255,.12);color:var(--cyan);border:1px solid rgba(0,212,255,.2);}
+.badge-done{background:rgba(255,215,0,.1);color:var(--yellow);border:1px solid rgba(255,215,0,.2);}
+.badge-paused{background:rgba(255,140,0,.1);color:var(--orange);border:1px solid rgba(255,140,0,.2);}
+.badge-lost{background:rgba(255,68,102,.1);color:var(--red);border:1px solid rgba(255,68,102,.2);}
+.action-btns{display:flex;gap:.4rem;}
+.action-btn{width:28px;height:28px;border:1px solid var(--border);background:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;}
+.action-btn svg{width:12px;height:12px;stroke:var(--muted);fill:none;stroke-width:2;}
+.action-btn:hover{border-color:var(--neon);background:var(--neon-dim);}
+.action-btn:hover svg{stroke:var(--neon);}
+.action-btn.del:hover{border-color:var(--red);background:rgba(255,68,102,.08);}
+.action-btn.del:hover svg{stroke:var(--red);}
+.empty-state{padding:4rem;text-align:center;}
+.empty-state svg{width:48px;height:48px;stroke:var(--muted);fill:none;stroke-width:1;margin:0 auto 1rem;display:block;opacity:.4;}
+.empty-state p{font-family:'Space Mono',monospace;font-size:.78rem;color:var(--muted);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(5,10,7,.85);z-index:300;display:none;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px);}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 0 80px rgba(0,255,136,.08);}
+.modal-header{padding:1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--card);z-index:1;}
+.modal-title{font-size:1rem;font-weight:700;color:var(--white);}
+.modal-title span{color:var(--neon);}
+.modal-close{width:32px;height:32px;border:1px solid var(--border);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:1.2rem;transition:all .2s;}
+.modal-close:hover{border-color:var(--red);color:var(--red);}
+.modal-body{padding:1.5rem;}
+.form-row-modal{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.form-group-m{margin-bottom:1.1rem;}
+.form-group-m label{display:block;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--neon);opacity:.7;margin-bottom:.45rem;}
+.form-group-m input,.form-group-m select,.form-group-m textarea{width:100%;background:var(--dark3);border:1px solid var(--border);padding:.75rem .9rem;font-family:'Space Mono',monospace;font-size:.8rem;color:var(--text);outline:none;transition:border-color .3s;}
+.form-group-m input:focus,.form-group-m select:focus,.form-group-m textarea:focus{border-color:var(--neon);}
+.form-group-m select option,.form-group-m textarea{background:var(--dark3);}
+.form-group-m textarea{resize:vertical;min-height:80px;}
+.modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.8rem;}
+
+/* DETAIL PANEL */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem;}
+.detail-field{padding:.8rem 1rem;background:var(--dark3);border:1px solid var(--border);}
+.detail-field label{font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--neon);opacity:.6;display:block;margin-bottom:.3rem;}
+.detail-field span{font-size:.85rem;color:var(--white);}
+.notes-box{margin-top:1rem;padding:1rem;background:var(--dark3);border:1px solid var(--border);}
+.notes-box label{font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--neon);opacity:.6;display:block;margin-bottom:.5rem;}
+.notes-box p{font-family:'Space Mono',monospace;font-size:.75rem;color:var(--muted);line-height:1.7;}
+
+/* TOAST */
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--neon);color:var(--neon);font-family:'Space Mono',monospace;font-size:.75rem;padding:.8rem 1.4rem;z-index:600;transform:translateY(100px);opacity:0;transition:all .3s;letter-spacing:.06em;}
+.toast.show{transform:none;opacity:1;}
+.toast.error{border-color:var(--red);color:var(--red);}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--dark2);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--neon);}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .form-row-modal{grid-template-columns:1fr;}
+  .detail-grid{grid-template-columns:1fr;}
+  .search-box{width:100%;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">CodeBaja CRM</div>
+    <div class="login-sub">// Panel de administración</div>
+    <label class="login-label">Usuario</label>
+    <input class="login-input" id="loginUser" type="text" placeholder="admin" autocomplete="username"/>
+    <label class="login-label">Contraseña</label>
+    <input class="login-input" id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password"/>
+    <button class="login-btn" onclick="doLogin()">Acceder →</button>
+    <div class="login-error" id="loginError">// Credenciales incorrectas</div>
+  </div>
+  <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);opacity:.4;">usuario: admin · contraseña: codebaja2025</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-logo">CodeBaja CRM</div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="topbarDate"></span>
+      <span class="topbar-user">// admin</span>
+      <button class="logout-btn" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="nav-section">Principal</div>
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('clientes')">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Clientes
+        <span id="newBadge" style="display:none;margin-left:auto;background:var(--neon);color:var(--dark);font-family:'Space Mono',monospace;font-size:.55rem;font-weight:700;padding:.1rem .45rem;border-radius:2px;"></span>
+      </div>
+      <div class="nav-section">Herramientas</div>
+      <div class="nav-item" onclick="showPage('nuevo')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nuevo cliente
+      </div>
+      <div class="nav-item" onclick="exportCSV()">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Exportar CSV
+      </div>
+      <div class="sidebar-bottom">
+        <div class="sidebar-version">// CodeBaja CRM v1.0<br>// Mexicali, B.C.</div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <div class="page-title">Dashboard <span>//</span> Resumen</div>
+          <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted)" id="dashDate"></span>
+        </div>
+        <div class="stats-row" id="statsRow">
+          <div class="stat-card"><div class="stat-label-s">Total clientes</div><div class="stat-val" id="statTotal">0</div><div class="stat-sub">registrados</div></div>
+          <div class="stat-card cyan"><div class="stat-label-s">En progreso</div><div class="stat-val" id="statActive">0</div><div class="stat-sub">proyectos activos</div></div>
+          <div class="stat-card orange"><div class="stat-label-s">Nuevos</div><div class="stat-val" id="statNew">0</div><div class="stat-sub">leads sin contactar</div></div>
+          <div class="stat-card red"><div class="stat-label-s">Completados</div><div class="stat-val" id="statDone">0</div><div class="stat-sub">proyectos entregados</div></div>
+        </div>
+        <div style="margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--neon);opacity:.7;">// Clientes recientes</div>
+          <button class="btn-sm btn-outline-sm" onclick="showPage('clientes')">Ver todos →</button>
+        </div>
+        <div class="table-wrap" id="recentTable"></div>
+      </div>
+
+      <!-- CLIENTES -->
+      <div class="page" id="page-clientes">
+        <div class="page-header">
+          <div class="page-title">Clientes <span>//</span> Base de datos</div>
+          <div class="toolbar">
+            <input class="search-box" id="searchInput" placeholder="// Buscar cliente..." oninput="renderTable()"/>
+            <select class="filter-select" id="filterStatus" onchange="renderTable()">
+              <option value="">Todos los estados</option>
+              <option value="Nuevo">Nuevo</option>
+              <option value="Activo">Activo</option>
+              <option value="Completado">Completado</option>
+              <option value="Pausado">Pausado</option>
+              <option value="Perdido">Perdido</option>
+            </select>
+            <select class="filter-select" id="filterService" onchange="renderTable()">
+              <option value="">Todos los servicios</option>
+              <option value="Starter">Starter</option>
+              <option value="Profesional">Profesional</option>
+              <option value="Premium">Premium</option>
+              <option value="Mantenimiento">Mantenimiento</option>
+            </select>
+            <button class="btn-sm btn-primary-sm" onclick="openModal()">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Agregar
+            </button>
+            <button class="btn-sm btn-outline-sm" onclick="exportCSV()">
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              CSV
+            </button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Cliente</th>
+                <th>Contacto</th>
+                <th>Servicio</th>
+                <th>Estado</th>
+                <th>Valor</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="clientTable"></tbody>
+          </table>
+        </div>
+        <div id="emptyClientes" class="empty-state" style="display:none;">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <p>// Sin clientes todavía.<br>Agrega el primero con el botón "Agregar".</p>
+        </div>
+      </div>
+
+      <!-- NUEVO (quick form) -->
+      <div class="page" id="page-nuevo">
+        <div class="page-header">
+          <div class="page-title">Nuevo <span>//</span> Cliente</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);padding:2rem;max-width:700px;">
+          <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--neon);opacity:.6;margin-bottom:1.5rem;letter-spacing:.1em;">// Completa los datos del nuevo cliente</div>
+          <div class="form-row-modal">
+            <div class="form-group-m"><label>Nombre / Empresa *</label><input id="qNombre" type="text" placeholder="Ej: Restaurante El Ranchero"/></div>
+            <div class="form-group-m"><label>Contacto *</label><input id="qContacto" type="text" placeholder="Nombre del responsable"/></div>
+          </div>
+          <div class="form-row-modal">
+            <div class="form-group-m"><label>WhatsApp *</label><input id="qTel" type="tel" placeholder="686 000-0000"/></div>
+            <div class="form-group-m"><label>Correo</label><input id="qEmail" type="email" placeholder="correo@ejemplo.com"/></div>
+          </div>
+          <div class="form-row-modal">
+            <div class="form-group-m">
+              <label>Servicio</label>
+              <select id="qServicio">
+                <option>Starter</option>
+                <option selected>Profesional</option>
+                <option>Premium</option>
+                <option>Mantenimiento</option>
+                <option>Cotización pendiente</option>
+              </select>
+            </div>
+            <div class="form-group-m">
+              <label>Estado</label>
+              <select id="qEstado">
+                <option selected>Nuevo</option>
+                <option>Activo</option>
+                <option>Completado</option>
+                <option>Pausado</option>
+                <option>Perdido</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row-modal">
+            <div class="form-group-m"><label>Valor del proyecto (MXN)</label><input id="qValor" type="number" placeholder="9000"/></div>
+            <div class="form-group-m"><label>Fuente / Cómo llegó</label><input id="qFuente" type="text" placeholder="WhatsApp, referido, web..."/></div>
+          </div>
+          <div class="form-group-m"><label>Notas</label><textarea id="qNotas" placeholder="Detalles del proyecto, peticiones especiales..."></textarea></div>
+          <div style="display:flex;gap:.8rem;margin-top:.5rem;">
+            <button class="btn-sm btn-primary-sm" style="padding:.75rem 1.5rem;font-size:.78rem;" onclick="saveQuick()">Guardar cliente →</button>
+            <button class="btn-sm btn-outline-sm" onclick="showPage('clientes')">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR/VER -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Nuevo <span>cliente</span></div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId"/>
+      <div class="form-row-modal">
+        <div class="form-group-m"><label>Nombre / Empresa *</label><input id="mNombre" type="text" placeholder="Ej: Tienda San Luis"/></div>
+        <div class="form-group-m"><label>Contacto *</label><input id="mContacto" type="text" placeholder="Nombre del responsable"/></div>
+      </div>
+      <div class="form-row-modal">
+        <div class="form-group-m"><label>WhatsApp *</label><input id="mTel" type="tel" placeholder="686 000-0000"/></div>
+        <div class="form-group-m"><label>Correo</label><input id="mEmail" type="email" placeholder="correo@ejemplo.com"/></div>
+      </div>
+      <div class="form-row-modal">
+        <div class="form-group-m">
+          <label>Servicio</label>
+          <select id="mServicio">
+            <option>Starter</option>
+            <option>Profesional</option>
+            <option>Premium</option>
+            <option>Mantenimiento</option>
+            <option>Cotización pendiente</option>
+          </select>
+        </div>
+        <div class="form-group-m">
+          <label>Estado</label>
+          <select id="mEstado">
+            <option>Nuevo</option>
+            <option>Activo</option>
+            <option>Completado</option>
+            <option>Pausado</option>
+            <option>Perdido</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-modal">
+        <div class="form-group-m"><label>Valor del proyecto (MXN)</label><input id="mValor" type="number" placeholder="9000"/></div>
+        <div class="form-group-m"><label>Fuente / Cómo llegó</label><input id="mFuente" type="text" placeholder="WhatsApp, referido, web..."/></div>
+      </div>
+      <div class="form-group-m"><label>Notas</label><textarea id="mNotas" placeholder="Detalles, comentarios del cliente..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-outline-sm" onclick="closeModal()">Cancelar</button>
+      <button class="btn-sm btn-primary-sm" onclick="saveModal()">Guardar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STORAGE ──────────────────────────────────────────────
+const STORAGE_KEY = 'codebaja-clients';
+
+async function loadClients() {
+  try {
+    const r = await window.storage.get(STORAGE_KEY, true);
+    return r ? JSON.parse(r.value) : [];
+  } catch { return []; }
+}
+
+async function saveClients(clients) {
+  try {
+    await window.storage.set(STORAGE_KEY, JSON.stringify(clients), true);
+  } catch(e) { console.error('Storage error', e); }
+}
+
+// ── AUTH ─────────────────────────────────────────────────
+const CREDENTIALS = { user: 'admin', pass: 'codebaja2025' };
+
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if (u === CREDENTIALS.user && p === CREDENTIALS.pass) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+    init();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('loginPass').value = '';
+  }
+}
+
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('loginUser').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+function doLogout() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+}
+
+// ── INIT ──────────────────────────────────────────────────
+async function init() {
+  const now = new Date();
+  const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+  const ds = now.toLocaleDateString('es-MX', opts);
+  document.getElementById('topbarDate').textContent = ds;
+  document.getElementById('dashDate').textContent = '// ' + ds;
+  await renderDashboard();
+  await renderTable();
+  // Polling cada 30 segundos para detectar leads nuevos del sitio
+  await pollNewLeads();
+  setInterval(pollNewLeads, 30000);
+}
+
+// ── NAVIGATION ────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  const navMap = { dashboard: 0, clientes: 1, nuevo: 2 };
+  document.querySelectorAll('.nav-item')[navMap[id]]?.classList.add('active');
+  if (id === 'clientes') renderTable();
+  if (id === 'dashboard') renderDashboard();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────
+async function renderDashboard() {
+  const clients = await loadClients();
+  document.getElementById('statTotal').textContent = clients.length;
+  document.getElementById('statActive').textContent = clients.filter(c => c.estado === 'Activo').length;
+  document.getElementById('statNew').textContent = clients.filter(c => c.estado === 'Nuevo').length;
+  document.getElementById('statDone').textContent = clients.filter(c => c.estado === 'Completado').length;
+
+  const recent = [...clients].sort((a,b) => b.id - a.id).slice(0, 5);
+  const tbody = recent.length === 0
+    ? `<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><p>// Aún no hay clientes registrados.</p></div>`
+    : `<table><thead><tr><th>Cliente</th><th>Servicio</th><th>Estado</th><th>Valor</th><th>Fecha</th></tr></thead><tbody>${
+        recent.map(c => `<tr>
+          <td><strong style="color:var(--white)">${esc(c.nombre)}</strong><br><span style="font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted)">${esc(c.contacto||'')}</span></td>
+          <td style="font-family:'Space Mono',monospace;font-size:.75rem">${esc(c.servicio)}</td>
+          <td>${badgeHtml(c.estado)}</td>
+          <td style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--neon)">${c.valor ? '$'+Number(c.valor).toLocaleString() : '—'}</td>
+          <td style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted)">${c.fecha||'—'}</td>
+        </tr>`).join('')
+      }</tbody></table>`;
+  document.getElementById('recentTable').innerHTML = tbody;
+}
+
+// ── TABLE ─────────────────────────────────────────────────
+async function renderTable() {
+  const clients = await loadClients();
+  const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const filterStatus = document.getElementById('filterStatus')?.value || '';
+  const filterService = document.getElementById('filterService')?.value || '';
+
+  let filtered = clients.filter(c => {
+    const matchSearch = !search ||
+      (c.nombre||'').toLowerCase().includes(search) ||
+      (c.contacto||'').toLowerCase().includes(search) ||
+      (c.tel||'').includes(search) ||
+      (c.email||'').toLowerCase().includes(search);
+    const matchStatus = !filterStatus || c.estado === filterStatus;
+    const matchService = !filterService || c.servicio === filterService;
+    return matchSearch && matchStatus && matchService;
+  });
+
+  const tbody = document.getElementById('clientTable');
+  const empty = document.getElementById('emptyClientes');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map((c, i) => `
+    <tr>
+      <td style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted)">${String(i+1).padStart(2,'0')}</td>
+      <td>
+        <strong style="color:var(--white);font-size:.88rem">${esc(c.nombre)}</strong>
+        ${c.fuente ? `<br><span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted)">via ${esc(c.fuente)}</span>` : ''}
+      </td>
+      <td>
+        <div style="font-size:.82rem">${esc(c.contacto||'—')}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted)">${esc(c.tel||'')} ${c.email?`· ${esc(c.email)}`:''}  </div>
+      </td>
+      <td style="font-family:'Space Mono',monospace;font-size:.75rem">${esc(c.servicio||'—')}</td>
+      <td>${badgeHtml(c.estado)}</td>
+      <td style="font-family:'Space Mono',monospace;font-size:.8rem;color:var(--neon)">${c.valor ? '$'+Number(c.valor).toLocaleString()+' MXN' : '—'}</td>
+      <td style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted)">${c.fecha||'—'}</td>
+      <td>
+        <div class="action-btns">
+          <button class="action-btn" title="Editar" onclick="editClient(${c.id})">
+            <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="action-btn del" title="Eliminar" onclick="deleteClient(${c.id})">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+          <button class="action-btn" title="WhatsApp" onclick="openWA('${esc(c.tel)}')">
+            <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075a10 10 0 0 1-2.39-1.475 10 10 0 0 1-1.653-2.059c-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a9 9 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479s1.065 2.875 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.116 1.524 5.847L.057 24l6.305-1.654A11.882 11.882 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+// ── BADGE ─────────────────────────────────────────────────
+function badgeHtml(estado) {
+  const map = { 'Nuevo':'badge-new','Activo':'badge-active','Completado':'badge-done','Pausado':'badge-paused','Perdido':'badge-lost' };
+  return `<span class="badge ${map[estado]||'badge-new'}">${estado||'Nuevo'}</span>`;
+}
+
+// ── MODAL ─────────────────────────────────────────────────
+function openModal(client = null) {
+  document.getElementById('editId').value = client ? client.id : '';
+  document.getElementById('modalTitle').innerHTML = client ? 'Editar <span>cliente</span>' : 'Nuevo <span>cliente</span>';
+  document.getElementById('mNombre').value = client?.nombre || '';
+  document.getElementById('mContacto').value = client?.contacto || '';
+  document.getElementById('mTel').value = client?.tel || '';
+  document.getElementById('mEmail').value = client?.email || '';
+  document.getElementById('mServicio').value = client?.servicio || 'Profesional';
+  document.getElementById('mEstado').value = client?.estado || 'Nuevo';
+  document.getElementById('mValor').value = client?.valor || '';
+  document.getElementById('mFuente').value = client?.fuente || '';
+  document.getElementById('mNotas').value = client?.notas || '';
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('mNombre').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+async function saveModal() {
+  const nombre = document.getElementById('mNombre').value.trim();
+  if (!nombre) { showToast('// Nombre es requerido', true); return; }
+  const clients = await loadClients();
+  const editId = document.getElementById('editId').value;
+  const obj = {
+    id: editId ? Number(editId) : Date.now(),
+    nombre,
+    contacto: document.getElementById('mContacto').value.trim(),
+    tel: document.getElementById('mTel').value.trim(),
+    email: document.getElementById('mEmail').value.trim(),
+    servicio: document.getElementById('mServicio').value,
+    estado: document.getElementById('mEstado').value,
+    valor: document.getElementById('mValor').value,
+    fuente: document.getElementById('mFuente').value.trim(),
+    notas: document.getElementById('mNotas').value.trim(),
+    fecha: editId ? clients.find(c=>c.id===Number(editId))?.fecha : new Date().toLocaleDateString('es-MX'),
+  };
+  if (editId) {
+    const idx = clients.findIndex(c => c.id === Number(editId));
+    if (idx > -1) clients[idx] = obj;
+  } else {
+    clients.push(obj);
+  }
+  await saveClients(clients);
+  closeModal();
+  await renderTable();
+  await renderDashboard();
+  showToast(editId ? '// Cliente actualizado ✓' : '// Cliente agregado ✓');
+}
+
+// ── QUICK FORM ────────────────────────────────────────────
+async function saveQuick() {
+  const nombre = document.getElementById('qNombre').value.trim();
+  if (!nombre) { showToast('// Nombre es requerido', true); return; }
+  const clients = await loadClients();
+  clients.push({
+    id: Date.now(),
+    nombre,
+    contacto: document.getElementById('qContacto').value.trim(),
+    tel: document.getElementById('qTel').value.trim(),
+    email: document.getElementById('qEmail').value.trim(),
+    servicio: document.getElementById('qServicio').value,
+    estado: document.getElementById('qEstado').value,
+    valor: document.getElementById('qValor').value,
+    fuente: document.getElementById('qFuente').value.trim(),
+    notas: document.getElementById('qNotas').value.trim(),
+    fecha: new Date().toLocaleDateString('es-MX'),
+  });
+  await saveClients(clients);
+  ['qNombre','qContacto','qTel','qEmail','qValor','qFuente','qNotas'].forEach(id => document.getElementById(id).value = '');
+  showToast('// Cliente guardado ✓');
+  showPage('clientes');
+}
+
+// ── EDIT / DELETE ─────────────────────────────────────────
+async function editClient(id) {
+  const clients = await loadClients();
+  const client = clients.find(c => c.id === id);
+  if (client) openModal(client);
+}
+
+async function deleteClient(id) {
+  if (!confirm('¿Eliminar este cliente? Esta acción no se puede deshacer.')) return;
+  let clients = await loadClients();
+  clients = clients.filter(c => c.id !== id);
+  await saveClients(clients);
+  await renderTable();
+  await renderDashboard();
+  showToast('// Cliente eliminado');
+}
+
+// ── WHATSAPP ──────────────────────────────────────────────
+function openWA(tel) {
+  if (!tel) { showToast('// Sin número registrado', true); return; }
+  const num = tel.replace(/\D/g, '');
+  const full = num.startsWith('52') ? num : '52' + num;
+  window.open('https://wa.me/' + full, '_blank');
+}
+
+// ── EXPORT CSV ────────────────────────────────────────────
+async function exportCSV() {
+  const clients = await loadClients();
+  if (clients.length === 0) { showToast('// Sin datos para exportar', true); return; }
+  const headers = ['ID','Nombre','Contacto','Tel','Email','Servicio','Estado','Valor','Fuente','Notas','Fecha'];
+  const rows = clients.map(c => [c.id,c.nombre,c.contacto,c.tel,c.email,c.servicio,c.estado,c.valor,c.fuente,c.notas,c.fecha].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`));
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'codebaja-clientes-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('// CSV exportado ✓');
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, error = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (error ? ' error' : '') + ' show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── LIVE POLLING — detecta leads nuevos del sitio web ────
+let lastCount = 0;
+async function pollNewLeads() {
+  try {
+    const clients = await loadClients();
+    const newLeads = clients.filter(c => c.estado === 'Nuevo' && c.fuente === 'Sitio web').length;
+    const badge = document.getElementById('newBadge');
+    if (badge) {
+      if (newLeads > 0) {
+        badge.textContent = newLeads + ' nuevo' + (newLeads > 1 ? 's' : '');
+        badge.style.display = 'inline';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+    if (newLeads > lastCount && lastCount > 0) {
+      showToast('// 🔔 Nuevo lead del sitio web!');
+    }
+    lastCount = newLeads;
+    // Also refresh dashboard stats silently
+    await renderDashboard();
+  } catch(_) {}
+}
+
+// ── ESCAPE HTML ───────────────────────────────────────────
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// close modal on overlay click
+document.getElementById('modalOverlay').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+</script>
+</body>
+</html>
